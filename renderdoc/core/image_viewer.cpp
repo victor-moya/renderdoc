@@ -179,6 +179,24 @@ public:
   {
     return vector<CounterResult>();
   }
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples) {return BenchmarkResult();}
+  void CaptureDrawCallsPipelineState() {}
+  vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState()
+  {
+    return vector<DrawcallPipelineState<D3D11Pipe::State>>();
+  }
+  vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState()
+  {
+    return vector<DrawcallPipelineState<D3D12Pipe::State>>();
+  }
+  vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState()
+  {
+    return vector<DrawcallPipelineState<GLPipe::State>>();
+  }
+  vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState()
+  {
+    return vector<DrawcallPipelineState<VKPipe::State>>();
+  }
   void FillCBufferVariables(ResourceId shader, string entryPoint, uint32_t cbufSlot,
                             vector<ShaderVariable> &outvars, const vector<byte> &data)
   {

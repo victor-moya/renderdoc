@@ -86,6 +86,46 @@ void GLReplay::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
   m_pDriver->ReplayLog(0, endEventID, replayType);
 }
 
+void GLReplay::CaptureDrawCallPipelineState(const DrawcallTreeNode &drawnode, uint32_t &eventStart)
+{
+  if(drawnode.children.empty())
+    return;
+
+  for(size_t i = 0; i < drawnode.children.size(); i++)
+  {
+    const DrawcallDescription &d = drawnode.children[i].draw;
+
+    CaptureDrawCallPipelineState(drawnode.children[i], eventStart);
+
+    m_pDriver->ReplayLog(eventStart, d.eventID, eReplay_WithoutDraw);
+
+    if(d.flags & (DrawFlags::Drawcall | DrawFlags::Dispatch | DrawFlags::CmdList | DrawFlags::MultiDraw))
+    {
+      SavePipelineState();
+
+      GLPipe::State pipeState = m_CurPipelineState;
+
+      DrawcallPipelineState<GLPipe::State> drawCallPipeState;
+      drawCallPipeState.eventID = d.eventID;
+      drawCallPipeState.pipelineState = pipeState;
+      m_DrawcallsPipelineState.push_back(drawCallPipeState);
+    }
+
+    m_pDriver->ReplayLog(eventStart, d.eventID, eReplay_OnlyDraw);
+
+    eventStart = d.eventID + 1;
+  }
+}
+
+void GLReplay::CaptureDrawCallsPipelineState()
+{
+  m_DrawcallsPipelineState.clear();
+
+  uint32_t eventStart = 0;
+
+  CaptureDrawCallPipelineState(m_pDriver->GetRootDraw(), eventStart);
+}
+
 vector<uint32_t> GLReplay::GetPassEvents(uint32_t eventID)
 {
   vector<uint32_t> passEvents;

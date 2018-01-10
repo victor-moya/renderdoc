@@ -868,7 +868,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
   for(int i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++)
     if(pipe->IA.Used_VB(m_pDevice, i))
       m_ResourceUses[GetIDForResource(pipe->IA.VBs[i])].push_back(
-          EventUsage(e, ResourceUsage::VertexBuffer));
+          EventUsage(e, ResourceUsage::VertexBuffer, i));
 
   //////////////////////////////
   // Shaders
@@ -890,7 +890,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
       {
         WrappedID3D11ShaderResourceView1 *view = (WrappedID3D11ShaderResourceView1 *)sh.SRVs[i];
         m_ResourceUses[view->GetResourceResID()].push_back(
-            EventUsage(e, ResUsage(s), view->GetResourceID()));
+            EventUsage(e, ResUsage(s), i, view->GetResourceID()));
       }
     }
 
@@ -903,7 +903,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
           WrappedID3D11UnorderedAccessView1 *view =
               (WrappedID3D11UnorderedAccessView1 *)pipe->CSUAVs[i];
           m_ResourceUses[view->GetResourceResID()].push_back(
-              EventUsage(e, ResourceUsage::CS_RWResource, view->GetResourceID()));
+              EventUsage(e, ResourceUsage::CS_RWResource, i, view->GetResourceID()));
         }
       }
     }
@@ -915,7 +915,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
   for(int i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++)
     if(pipe->SO.Buffers[i])    // assuming for now that any SO target bound is used.
       m_ResourceUses[GetIDForResource(pipe->SO.Buffers[i])].push_back(
-          EventUsage(e, ResourceUsage::StreamOut));
+          EventUsage(e, ResourceUsage::StreamOut, i));
 
   //////////////////////////////
   // OM
@@ -926,7 +926,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
     {
       WrappedID3D11UnorderedAccessView1 *view = (WrappedID3D11UnorderedAccessView1 *)pipe->OM.UAVs[i];
       m_ResourceUses[view->GetResourceResID()].push_back(
-          EventUsage(e, ResourceUsage::PS_RWResource, view->GetResourceID()));
+          EventUsage(e, ResourceUsage::PS_RWResource, i, view->GetResourceID()));
     }
   }
 
@@ -944,7 +944,7 @@ void WrappedID3D11DeviceContext::AddUsage(const DrawcallDescription &d)
       WrappedID3D11RenderTargetView1 *view =
           (WrappedID3D11RenderTargetView1 *)pipe->OM.RenderTargets[i];
       m_ResourceUses[view->GetResourceResID()].push_back(
-          EventUsage(e, ResourceUsage::ColorTarget, view->GetResourceID()));
+          EventUsage(e, ResourceUsage::ColorTarget, i, view->GetResourceID()));
     }
   }
 }
@@ -980,6 +980,20 @@ void WrappedID3D11DeviceContext::AddDrawcall(const DrawcallDescription &d, bool 
     if(m_CurrentPipelineState->OM.DepthView)
       draw.depthOut = m_pDevice->GetResourceManager()->GetOriginalID(
           ((WrappedID3D11DepthStencilView *)m_CurrentPipelineState->OM.DepthView)->GetResourceResID());
+  }
+
+  const D3D11RenderState *pipe = m_CurrentPipelineState;
+
+  const D3D11RenderState::shader *shArr[6] = {
+      &pipe->VS, &pipe->HS, &pipe->DS, &pipe->GS, &pipe->PS, &pipe->CS,
+  };
+
+  for(int s = 0; s < 6; s++)
+  {
+    const D3D11RenderState::shader &sh = *shArr[s];
+
+    // draw.shaders[s] = GetIDForResource(sh.Shader);
+    draw.shaders[s] = m_pDevice->GetResourceManager()->GetOriginalID(GetIDForResource(sh.Shader));
   }
 
   // markers don't increment drawcall ID

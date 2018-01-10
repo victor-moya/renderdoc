@@ -51,6 +51,7 @@ enum ReplayProxyPacket
   eReplayProxy_GetTextureData,
 
   eReplayProxy_SavePipelineState,
+  eReplayProxy_CaptureDrawCallsPipelineState,
   eReplayProxy_GetUsage,
   eReplayProxy_GetLiveID,
   eReplayProxy_GetFrameRecord,
@@ -63,6 +64,7 @@ enum ReplayProxyPacket
   eReplayProxy_FetchCounters,
   eReplayProxy_EnumerateCounters,
   eReplayProxy_DescribeCounter,
+  eReplayProxy_Benchmark,
   eReplayProxy_FillCBufferVariables,
 
   eReplayProxy_InitPostVS,
@@ -404,7 +406,25 @@ public:
   D3D11Pipe::State GetD3D11PipelineState() { return m_D3D11PipelineState; }
   D3D12Pipe::State GetD3D12PipelineState() { return m_D3D12PipelineState; }
   GLPipe::State GetGLPipelineState() { return m_GLPipelineState; }
-  VKPipe::State GetVulkanPipelineState() { return m_VulkanPipelineState; }
+  VKPipe::State GetVulkanPipelineState() { return m_VulkanPipelineState; } 
+  void CaptureDrawCallsPipelineState();
+  vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState()
+  {
+    return m_DrawcallsD3D11PipelineState;
+  }
+  vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState()
+  {
+    return m_DrawcallsD3D12PipelineState;
+  }
+  vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState()
+  {
+    return m_DrawcallsGLPipelineState;
+  }
+  vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState()
+  {
+    return m_DrawcallsVulkanPipelineState;
+  }
+
   void ReplayLog(uint32_t endEventID, ReplayLogType replayType);
 
   vector<uint32_t> GetPassEvents(uint32_t eventID);
@@ -419,6 +439,7 @@ public:
   vector<GPUCounter> EnumerateCounters();
   void DescribeCounter(GPUCounter counterID, CounterDescription &desc);
   vector<CounterResult> FetchCounters(const vector<GPUCounter> &counterID);
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
 
   void FillCBufferVariables(ResourceId shader, string entryPoint, uint32_t cbufSlot,
                             vector<ShaderVariable> &outvars, const vector<byte> &data);
@@ -564,4 +585,9 @@ private:
   D3D12Pipe::State m_D3D12PipelineState;
   GLPipe::State m_GLPipelineState;
   VKPipe::State m_VulkanPipelineState;
+
+  vector<DrawcallPipelineState<D3D11Pipe::State>> m_DrawcallsD3D11PipelineState;
+  vector<DrawcallPipelineState<D3D12Pipe::State>> m_DrawcallsD3D12PipelineState;
+  vector<DrawcallPipelineState<GLPipe::State>> m_DrawcallsGLPipelineState;
+  vector<DrawcallPipelineState<VKPipe::State>> m_DrawcallsVulkanPipelineState;
 };

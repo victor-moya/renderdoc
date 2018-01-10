@@ -734,6 +734,47 @@ void ReplayOutput::DisplayTex()
   }
 }
 
+void ReplayOutput::RenderOverlay()
+{
+  DrawcallDescription *draw = m_pRenderer->GetDrawcallByEID(m_EventID);
+
+  if(m_RenderData.texDisplay.overlay != DebugOverlay::NoOverlay && draw)
+  {
+    if(m_OverlayDirty)
+    {
+      m_pDevice->ReplayLog(m_EventID, eReplay_WithoutDraw);
+      RefreshOverlay();
+      m_pDevice->ReplayLog(m_EventID, eReplay_OnlyDraw);
+    }
+  }
+  else if(m_ForceOverlayRefresh)
+  {
+    m_ForceOverlayRefresh = false;
+    m_pDevice->ReplayLog(m_EventID, eReplay_Full);
+  }
+
+  TextureDisplay texDisplay = m_RenderData.texDisplay;
+
+  if(m_RenderData.texDisplay.overlay != DebugOverlay::NoOverlay && draw &&
+     //m_pDevice->IsRenderOutput(m_RenderData.texDisplay.texid) &&
+     m_RenderData.texDisplay.overlay != DebugOverlay::NaN &&
+     m_RenderData.texDisplay.overlay != DebugOverlay::Clipping)
+  {
+    RDCASSERT(m_OverlayResourceId != ResourceId());
+    texDisplay.texid = m_pDevice->GetLiveID(m_OverlayResourceId);
+    texDisplay.Red = texDisplay.Green = texDisplay.Blue = texDisplay.Alpha = true;
+    texDisplay.rawoutput = false;
+    texDisplay.CustomShader = ResourceId();
+    texDisplay.scale = m_RenderData.texDisplay.scale;
+    texDisplay.HDRMul = -1.0f;
+    texDisplay.FlipY = m_RenderData.texDisplay.FlipY;
+    texDisplay.rangemin = 0.0f;
+    texDisplay.rangemax = 1.0f;
+
+    m_pDevice->RenderTexture(texDisplay);
+  }
+}
+
 void ReplayOutput::DisplayMesh()
 {
   DrawcallDescription *draw = m_pRenderer->GetDrawcallByEID(m_EventID);
@@ -867,6 +908,11 @@ extern "C" RENDERDOC_API bool32 RENDERDOC_CC ReplayOutput_AddThumbnail(IReplayOu
 extern "C" RENDERDOC_API void RENDERDOC_CC ReplayOutput_Display(IReplayOutput *output)
 {
   output->Display();
+}
+
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayOutput_RenderOverlay(IReplayOutput *output)
+{
+  output->RenderOverlay();
 }
 
 extern "C" RENDERDOC_API bool32 RENDERDOC_CC ReplayOutput_SetPixelContext(IReplayOutput *output,

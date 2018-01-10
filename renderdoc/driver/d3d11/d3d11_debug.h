@@ -163,6 +163,8 @@ public:
   vector<CounterResult> FetchCounters(const vector<GPUCounter> &counters);
   vector<CounterResult> FetchCountersAMD(const vector<GPUCounter> &counters);
 
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
+
   void RenderText(float x, float y, const char *textfmt, ...);
   void RenderMesh(uint32_t eventID, const vector<MeshFormat> &secondaryDraws, const MeshDisplay &cfg);
 

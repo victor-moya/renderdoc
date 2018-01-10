@@ -457,6 +457,7 @@ Serialiser::Serialiser(size_t length, const byte *memoryBuf, bool fileheader)
 
   if(!fileheader)
   {
+    m_SerVer = SERIALISE_VERSION;
     m_BufferSize = length;
     m_CurrentBufferSize = (size_t)m_BufferSize;
     m_BufferHead = m_Buffer = AllocAlignedBuffer(m_CurrentBufferSize);

@@ -134,6 +134,9 @@ namespace renderdoc
         private static extern void ReplayOutput_Display(IntPtr real);
 
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ReplayOutput_RenderOverlay(IntPtr real);
+
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern bool ReplayOutput_SetPixelContext(IntPtr real, UInt32 windowSystem, IntPtr wnd);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayOutput_SetPixelContextLocation(IntPtr real, UInt32 x, UInt32 y);
@@ -182,6 +185,11 @@ namespace renderdoc
         public void Display()
         {
             ReplayOutput_Display(m_Real);
+        }
+
+        public void RenderOverlay()
+        {
+            ReplayOutput_RenderOverlay(m_Real);
         }
 
         public bool SetPixelContext(IntPtr wnd)
@@ -313,7 +321,16 @@ namespace renderdoc
         private static extern void ReplayRenderer_GetDisassemblyTargets(IntPtr real, IntPtr targets);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_DisassembleShader(IntPtr real, IntPtr refl, IntPtr target, IntPtr isa);
-
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool ReplayRenderer_CaptureDrawCallsPipelineState(IntPtr real);
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool ReplayRenderer_GetDrawCallsD3D11PipelineState(IntPtr real, IntPtr mem);
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool ReplayRenderer_GetDrawCallsD3D12PipelineState(IntPtr real, IntPtr mem);
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool ReplayRenderer_GetDrawCallsGLPipelineState(IntPtr real, IntPtr mem);
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool ReplayRenderer_GetDrawCallsVulkanPipelineState(IntPtr real, IntPtr mem);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_BuildCustomShader(IntPtr real, IntPtr entry, IntPtr source, UInt32 compileFlags, ShaderStageType type, ref ResourceId shaderID, IntPtr errorMem);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
@@ -338,6 +355,8 @@ namespace renderdoc
         private static extern void ReplayRenderer_EnumerateCounters(IntPtr real, IntPtr outcounters);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_DescribeCounter(IntPtr real, UInt32 counter, IntPtr outdesc);
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ReplayRenderer_Benchmark(IntPtr real, UInt32 frames_per_sample, UInt32 samples, IntPtr outresults);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_GetTextures(IntPtr real, IntPtr outtexs);
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
@@ -367,6 +386,9 @@ namespace renderdoc
 
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_GetPostVSData(IntPtr real, UInt32 instID, MeshDataStage stage, IntPtr outdata);
+
+        [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ReplayRenderer_GetShader(IntPtr real, ResourceId id, IntPtr entry, IntPtr outshader);
 
         [DllImport("renderdoc.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
         private static extern void ReplayRenderer_GetBufferData(IntPtr real, ResourceId buff, UInt64 offset, UInt64 len, IntPtr outdata);
@@ -518,6 +540,59 @@ namespace renderdoc
             CustomMarshal.Free(disasmMem);
 
             return disasm;
+        }
+
+        public void CaptureDrawCallsPipelineState()
+        {
+            bool success = ReplayRenderer_CaptureDrawCallsPipelineState(m_Real);
+        }
+
+        public DrawCallD3D11PipelineState[] GetDrawCallsD3D11PipelineState()
+        {
+            IntPtr mem = CustomMarshal.Alloc(typeof(templated_array));
+
+            bool success = ReplayRenderer_GetDrawCallsD3D11PipelineState(m_Real, mem);
+
+            DrawCallD3D11PipelineState[] ret = null;
+
+            if (success)
+                ret = (DrawCallD3D11PipelineState[])CustomMarshal.GetTemplatedArray(mem, typeof(DrawCallD3D11PipelineState), true);
+
+            CustomMarshal.Free(mem);
+
+            return ret;
+        }
+
+        public DrawCallD3D12PipelineState[] GetDrawCallsD3D12PipelineState()
+        {
+            IntPtr mem = CustomMarshal.Alloc(typeof(templated_array));
+
+            bool success = ReplayRenderer_GetDrawCallsD3D12PipelineState(m_Real, mem);
+
+            DrawCallD3D12PipelineState[] ret = null;
+
+            if (success)
+                ret = (DrawCallD3D12PipelineState[])CustomMarshal.GetTemplatedArray(mem, typeof(DrawCallD3D12PipelineState), true);
+
+            CustomMarshal.Free(mem);
+
+            return ret;
+        }
+
+        public DrawCallGLPipelineState[] GetDrawCallsGLPipelineState()
+        {
+            IntPtr mem = CustomMarshal.Alloc(typeof(templated_array));
+
+            bool success = ReplayRenderer_GetDrawCallsGLPipelineState(m_Real, mem);
+
+            DrawCallGLPipelineState[] ret = null;
+
+            if (success)
+                ret = (DrawCallGLPipelineState[])CustomMarshal.GetTemplatedArray(mem, typeof(DrawCallGLPipelineState), true);
+
+            CustomMarshal.Free(mem);
+
+            return ret;
         }
 
         public ResourceId BuildCustomShader(string entry, string source, UInt32 compileFlags, ShaderStageType type, out string errors)
@@ -672,6 +747,19 @@ namespace renderdoc
             return ret;
         }
 
+        public BenchmarkResult Benchmark(UInt32 frames_per_sample, UInt32 samples)
+        {
+            IntPtr mem = CustomMarshal.Alloc(typeof(BenchmarkResult));
+
+            ReplayRenderer_Benchmark(m_Real, frames_per_sample, samples, mem);
+
+            BenchmarkResult ret = (BenchmarkResult)CustomMarshal.PtrToStructure(mem, typeof(BenchmarkResult), false);
+
+            CustomMarshal.Free(mem);
+
+            return ret;
+        }
+
         public FetchDrawcall[] GetDrawcalls()
         {
             IntPtr mem = CustomMarshal.Alloc(typeof(templated_array));
@@ -807,6 +895,21 @@ namespace renderdoc
             ReplayRenderer_GetUsage(m_Real, id, mem);
 
             EventUsage[] ret = (EventUsage[])CustomMarshal.GetTemplatedArray(mem, typeof(EventUsage), true);
+
+            CustomMarshal.Free(mem);
+
+            return ret;
+        }
+
+        public ShaderReflection GetShader(ResourceId id, string entrypoint)
+        {
+            IntPtr entry_mem = CustomMarshal.MakeUTF8String(entrypoint);
+            IntPtr mem = CustomMarshal.Alloc(typeof(ShaderReflection));
+            
+            ReplayRenderer_GetShader(m_Real, id, entry_mem, mem);
+
+            ShaderReflection ret = (ShaderReflection)CustomMarshal.PtrToStructure(mem, typeof(ShaderReflection), true);
+            ret.origPtr = mem;
 
             CustomMarshal.Free(mem);
 

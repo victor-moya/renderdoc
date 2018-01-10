@@ -157,6 +157,24 @@ public:
   D3D12Pipe::State GetD3D12PipelineState() { return D3D12Pipe::State(); }
   GLPipe::State GetGLPipelineState() { return GLPipe::State(); }
   VKPipe::State GetVulkanPipelineState() { return m_VulkanPipelineState; }
+  void CaptureDrawCallsPipelineState() {}
+  vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState()
+  {
+    return vector<DrawcallPipelineState<D3D11Pipe::State>>();
+  }
+  vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState()
+  {
+    return vector<DrawcallPipelineState<D3D12Pipe::State>>();
+  }
+  vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState()
+  {
+    return vector<DrawcallPipelineState<GLPipe::State>>();
+  }
+  vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState()
+  {
+    return m_DrawcallsPipelineState;
+  }
+
   void FreeTargetResource(ResourceId id);
 
   void ReadLogInitialisation();
@@ -184,6 +202,8 @@ public:
   vector<GPUCounter> EnumerateCounters();
   void DescribeCounter(GPUCounter counterID, CounterDescription &desc);
   vector<CounterResult> FetchCounters(const vector<GPUCounter> &counters);
+
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
 
   bool GetMinMax(ResourceId texid, uint32_t sliceFace, uint32_t mip, uint32_t sample,
                  CompType typeHint, float *minval, float *maxval);
@@ -324,6 +344,7 @@ private:
   };
 
   VKPipe::State m_VulkanPipelineState;
+  vector<DrawcallPipelineState<VKPipe::State>> m_DrawcallsPipelineState;
 
   map<uint64_t, OutputWindow> m_OutputWindows;
   uint64_t m_OutputWinID;

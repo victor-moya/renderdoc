@@ -269,6 +269,11 @@ rdctype::array<DrawcallDescription> ReplayController::GetDrawcalls()
   return m_FrameRecord.drawcallList;
 }
 
+BenchmarkResult ReplayController::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  return m_pDevice->Benchmark(frames_per_sample, samples);
+}
+
 rdctype::array<CounterResult> ReplayController::FetchCounters(const rdctype::array<GPUCounter> &counters)
 {
   vector<GPUCounter> counterArray;
@@ -357,6 +362,58 @@ rdctype::array<DebugMessage> ReplayController::GetDebugMessages()
 rdctype::array<EventUsage> ReplayController::GetUsage(ResourceId id)
 {
   return m_pDevice->GetUsage(m_pDevice->GetLiveID(id));
+}
+
+void ReplayController::CaptureDrawCallsPipelineState()
+{
+  m_pDevice->CaptureDrawCallsPipelineState();
+
+  m_DrawCallsD3D11PipelineState = m_pDevice->GetDrawCallsD3D11PipelineState();
+  m_DrawCallsD3D12PipelineState = m_pDevice->GetDrawCallsD3D12PipelineState();
+  m_DrawCallsGLPipelineState = m_pDevice->GetDrawCallsGLPipelineState();
+  m_DrawCallsVulkanPipelineState = m_pDevice->GetDrawCallsVulkanPipelineState();
+}
+
+rdctype::array<DrawcallPipelineState<D3D11Pipe::State>> ReplayController::GetDrawCallsD3D11PipelineState()
+{
+  return m_DrawCallsD3D11PipelineState;
+}
+
+rdctype::array<DrawcallPipelineState<D3D12Pipe::State>> ReplayController::GetDrawCallsD3D12PipelineState()
+{
+  return m_DrawCallsD3D12PipelineState;
+}
+
+rdctype::array<DrawcallPipelineState<GLPipe::State>> ReplayController::GetDrawCallsGLPipelineState()
+{
+  return m_DrawCallsGLPipelineState;
+}
+
+rdctype::array<DrawcallPipelineState<VKPipe::State>> ReplayController::GetDrawCallsVulkanPipelineState()
+{
+   return m_DrawCallsVulkanPipelineState;
+}
+
+ShaderReflection *ReplayController::GetShader(ResourceId id, const char *entry)
+{    
+  ShaderReflection *ret = new ShaderReflection();
+  RDCEraseEl(*ret);
+
+  if (id == ResourceId())
+    return ret;
+  
+  if (entry == NULL)
+    return ret;
+
+  ResourceId liveId = m_pDevice->GetLiveID(id);
+
+  if (liveId == ResourceId())
+  { 
+    RDCERR("Couldn't get Live ID for %llu getting shader information", id);
+    return ret;
+  }
+
+  return m_pDevice->GetShader(liveId, entry);
 }
 
 MeshFormat ReplayController::GetPostVSData(uint32_t instID, MeshDataStage stage)
@@ -1789,6 +1846,35 @@ extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_DisassembleShader(IRep
   *disasm = rend->DisassembleShader(refl, target);
 }
 
+extern "C" RENDERDOC_API void RENDERDOC_CC
+ReplayRenderer_CaptureDrawCallsPipelineState(IReplayController *rend)
+{
+  return rend->CaptureDrawCallsPipelineState();
+}
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetDrawCallsD3D11PipelineState(
+    IReplayController *rend,
+    rdctype::array<DrawcallPipelineState<D3D11Pipe::State>> *drawcallsPipestate)
+{
+  *drawcallsPipestate = rend->GetDrawCallsD3D11PipelineState();
+}
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetDrawCallsD3D12PipelineState(
+    IReplayController *rend,
+    rdctype::array<DrawcallPipelineState<D3D12Pipe::State>> *drawcallsPipestate)
+{
+  *drawcallsPipestate = rend->GetDrawCallsD3D12PipelineState();
+}
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetDrawCallsGLPipelineState(
+    IReplayController *rend, rdctype::array<DrawcallPipelineState<GLPipe::State>> *drawcallsPipestate)
+{
+  *drawcallsPipestate = rend->GetDrawCallsGLPipelineState();
+}
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetDrawCallsVulkanPipelineState(
+    IReplayController *rend,
+    rdctype::array<DrawcallPipelineState<VKPipe::State>> *drawcallsPipestate)
+{
+  *drawcallsPipestate = rend->GetDrawCallsVulkanPipelineState();
+}
+
 extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_BuildCustomShader(
     IReplayController *rend, const char *entry, const char *source, const uint32_t compileFlags,
     ShaderStage type, ResourceId *shaderID, rdctype::str *errors)
@@ -1867,6 +1953,13 @@ extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_DescribeCounter(IRepla
 {
   *desc = rend->DescribeCounter(counterID);
 }
+
+extern "C" RENDERDOC_API void RENDERDOC_CC
+ReplayRenderer_Benchmark(IReplayController *rend, const uint32_t frames_per_sample, const uint32_t samples, BenchmarkResult *results)
+{
+  *results = rend->Benchmark(frames_per_sample, samples);
+}
+
 extern "C" RENDERDOC_API void RENDERDOC_CC
 ReplayRenderer_GetTextures(IReplayController *rend, rdctype::array<TextureDescription> *texs)
 {
@@ -1930,6 +2023,14 @@ extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetUsage(IReplayContro
                                                                    rdctype::array<EventUsage> *usage)
 {
   *usage = rend->GetUsage(id);
+}
+
+extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetShader(IReplayController *rend,
+                                                                    ResourceId id,
+                                                                    const char *entry,
+                                                                    ShaderReflection *shader)
+{
+  *shader = *(rend->GetShader(id, entry));
 }
 
 extern "C" RENDERDOC_API void RENDERDOC_CC ReplayRenderer_GetCBufferVariableContents(

@@ -115,6 +115,13 @@ public:
   D3D12Pipe::State GetD3D12PipelineState() { return D3D12Pipe::State(); }
   GLPipe::State GetGLPipelineState() { return m_CurPipelineState; }
   VKPipe::State GetVulkanPipelineState() { return VKPipe::State(); }
+
+  void CaptureDrawCallsPipelineState();
+  vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState() {return vector<DrawcallPipelineState<D3D11Pipe::State>>();}
+  vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState() {return vector<DrawcallPipelineState<D3D12Pipe::State>>();}
+  vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState() {return m_DrawcallsPipelineState;}
+  vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState() {return vector<DrawcallPipelineState<VKPipe::State>>();}
+
   void FreeTargetResource(ResourceId id);
 
   void ReadLogInitialisation();
@@ -167,6 +174,8 @@ public:
   vector<GPUCounter> EnumerateCounters();
   void DescribeCounter(GPUCounter counterID, CounterDescription &desc);
   vector<CounterResult> FetchCounters(const vector<GPUCounter> &counters);
+
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
 
   void RenderMesh(uint32_t eventID, const vector<MeshFormat> &secondaryDraws, const MeshDisplay &cfg);
 
@@ -417,6 +426,9 @@ private:
   WrappedOpenGL *m_pDriver;
 
   GLPipe::State m_CurPipelineState;
+  vector<DrawcallPipelineState<GLPipe::State>> m_DrawcallsPipelineState;
+  void CaptureDrawCallPipelineState(const DrawcallTreeNode &drawnode, uint32_t &eventStart);
+
 };
 
 const GLHookSet &GetRealGLFunctions();

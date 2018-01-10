@@ -696,30 +696,68 @@ DECLARE_REFLECTION_STRUCT(FrameDescription);
 DOCUMENT("Describes a particular use of a resource at a specific :data:`EID <APIEvent.eventID>`.");
 struct EventUsage
 {
-  EventUsage() : eventID(0), usage(ResourceUsage::Unused) {}
-  EventUsage(uint32_t e, ResourceUsage u) : eventID(e), usage(u) {}
-  EventUsage(uint32_t e, ResourceUsage u, ResourceId v) : eventID(e), usage(u), view(v) {}
-  DOCUMENT("Compares two ``EventUsage`` objects for less-than.");
-  bool operator<(const EventUsage &o) const
+  EventUsage() : eventID(0), usage(ResourceUsage::Unused), slot(0) {}
+  EventUsage(uint32_t e, ResourceUsage u) : eventID(e), usage(u), slot(0) {}
+  EventUsage(uint32_t e, ResourceUsage u, uint32_t s) : eventID(e), usage(u), slot(s) {}
+  EventUsage(uint32_t e, ResourceUsage u, ResourceId v) : eventID(e), usage(u), slot(0), view(v) {}
+  EventUsage(uint32_t e, ResourceUsage u, uint32_t s, ResourceId v)
+      : eventID(e), usage(u), slot(s), view(v)
+  {
+  }
+ DOCUMENT("Compares two ``EventUsage`` objects for less-than.");
+ bool operator<(const EventUsage &o) const
   {
     if(eventID != o.eventID)
       return eventID < o.eventID;
-    return usage < o.usage;
+    if(usage != o.usage)
+      return usage < o.usage;
+    return slot < o.slot;
   }
 
-  DOCUMENT("Compares two ``EventUsage`` objects for equality.");
-  bool operator==(const EventUsage &o) const { return eventID == o.eventID && usage == o.usage; }
+ DOCUMENT("Compares two ``EventUsage`` objects for equality.");
+ bool operator==(const EventUsage &o) const
+  {
+    return eventID == o.eventID && usage == o.usage && slot == o.slot;
+  }
+
   DOCUMENT("The :data:`EID <APIEvent.eventID>` where this usage happened.");
   uint32_t eventID;
 
   DOCUMENT("The :class:`ResourceUsage` in question.");
   ResourceUsage usage;
 
+  DOCUMENT("The :data:`slot where this usage is attached.");
+  uint32_t slot;
+  
   DOCUMENT("An optional :class:`ResourceId` identifying the view through which the use happened.");
   ResourceId view;
 };
 
 DECLARE_REFLECTION_STRUCT(EventUsage);
+
+template <typename T>
+struct DrawcallPipelineState
+{
+  DrawcallPipelineState<T>() : eventID(0) {}
+  DrawcallPipelineState<T>(uint32_t EID, T pipestate) : eventID(EID), pipelineState(pipeState) {}
+  bool operator<(const DrawcallPipelineState<T> &o) const
+  {
+    if(eventID != o.eventID)
+      return eventID < o.eventID;
+
+    // don't compare values, just consider equal
+    return false;
+  }
+
+  bool operator==(const DrawcallPipelineState<T> &o) const
+  {
+    // don't compare values, just consider equal by EID/counterID
+    return eventID == o.eventID && counterID == o.counterID;
+  }
+
+  uint32_t eventID;
+  T pipelineState;
+};
 
 DOCUMENT("Describes the properties of a drawcall, dispatch, debug marker, or similar event.");
 struct DrawcallDescription
@@ -839,11 +877,15 @@ for very coarse bucketing of drawcalls into similar passes by their outputs.
   DOCUMENT("The resource used for depth output - see :data:`outputs`.");
   ResourceId depthOut;
 
+  DOCUMENT("Resource Identifier for each shader target.");
+  ResourceId shaders[6];
+
   DOCUMENT("A list of the :class:`APIEvent` events that happened since the previous drawcall.");
   rdctype::array<APIEvent> events;
 
   DOCUMENT("A list of :class:`DrawcallDescription` child drawcalls.");
   rdctype::array<DrawcallDescription> children;
+
 };
 
 DECLARE_REFLECTION_STRUCT(DrawcallDescription);
@@ -961,6 +1003,14 @@ struct CounterResult
 };
 
 DECLARE_REFLECTION_STRUCT(CounterResult);
+
+struct BenchmarkResult
+{
+  BenchmarkResult() : avgFrameTime(0), minFrameTime(0), maxFrameTime(0) {};
+  float avgFrameTime;
+  float minFrameTime;
+  float maxFrameTime;
+};
 
 DOCUMENT("The contents of an RGBA pixel.");
 union PixelValue

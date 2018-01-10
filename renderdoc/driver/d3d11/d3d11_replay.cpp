@@ -1354,6 +1354,44 @@ void D3D11Replay::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
   m_pDevice->ReplayLog(0, endEventID, replayType);
 }
 
+void D3D11Replay::CaptureDrawCallPipelineState(const DrawcallTreeNode &drawnode, uint32_t &eventStart)
+{
+  if(drawnode.children.empty())
+    return;
+
+  for(size_t i = 0; i < drawnode.children.size(); i++)
+  {
+    const DrawcallDescription &d = drawnode.children[i].draw;
+
+    CaptureDrawCallPipelineState(drawnode.children[i], eventStart);
+
+    m_pDevice->ReplayLog(eventStart, d.eventID, eReplay_WithoutDraw);
+
+    if(d.flags & (DrawFlags::Drawcall | DrawFlags::Dispatch | DrawFlags::CmdList | DrawFlags::MultiDraw))
+    {
+      D3D11Pipe::State pipeState = MakePipelineState();
+
+      DrawcallPipelineState<D3D11Pipe::State> drawCallPipeState;
+      drawCallPipeState.eventID = d.eventID;
+      drawCallPipeState.pipelineState = pipeState;
+      m_DrawcallsPipelineState.push_back(drawCallPipeState);
+    }
+
+    m_pDevice->ReplayLog(eventStart, d.eventID, eReplay_OnlyDraw);
+
+    eventStart = d.eventID + 1;
+  }
+}
+
+void D3D11Replay::CaptureDrawCallsPipelineState()
+{
+  m_DrawcallsPipelineState.clear();
+
+  uint32_t eventStart = 0;
+
+  CaptureDrawCallPipelineState(m_pDevice->GetImmediateContext()->GetRootDraw(), eventStart);
+}
+
 vector<uint32_t> D3D11Replay::GetPassEvents(uint32_t eventID)
 {
   vector<uint32_t> passEvents;
@@ -1520,6 +1558,11 @@ void D3D11Replay::DescribeCounter(GPUCounter counterID, CounterDescription &desc
 vector<CounterResult> D3D11Replay::FetchCounters(const vector<GPUCounter> &counters)
 {
   return m_pDevice->GetDebugManager()->FetchCounters(counters);
+}
+
+BenchmarkResult D3D11Replay::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+    return m_pDevice->GetDebugManager()->Benchmark(frames_per_sample, samples);
 }
 
 void D3D11Replay::RenderMesh(uint32_t eventID, const vector<MeshFormat> &secondaryDraws,

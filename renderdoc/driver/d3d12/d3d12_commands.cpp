@@ -1208,6 +1208,38 @@ void D3D12CommandData::AddDrawcall(const DrawcallDescription &d, bool hasEvents,
         m_BakedCmdListInfo[m_LastCmdListID].state.GetDSVID());
   }
 
+  for(size_t i = 0; i < ARRAY_COUNT(draw.shaders); i++)
+    draw.shaders[i] = ResourceId();
+
+  const D3D12RenderState &state = m_BakedCmdListInfo[m_LastCmdListID].state;
+
+  D3D12ResourceManager *rm = m_pDevice->GetResourceManager();
+  
+  WrappedID3D12PipelineState *pipe = NULL;
+
+  if(state.pipe != ResourceId())
+    pipe = rm->GetCurrentAs<WrappedID3D12PipelineState>(state.pipe);
+
+  if(pipe && pipe->IsCompute())
+  {
+    WrappedID3D12Shader *sh = (WrappedID3D12Shader *)pipe->compute->CS.pShaderBytecode;
+
+    draw.shaders[5] = sh->GetResourceID();
+  }
+  else if(pipe)
+  {
+    D3D12_SHADER_BYTECODE *srcArr[] = {&pipe->graphics->VS, &pipe->graphics->HS, &pipe->graphics->DS,
+                                       &pipe->graphics->GS, &pipe->graphics->PS};
+
+    for(size_t stage = 0; stage < 5; stage++)
+    {
+      D3D12_SHADER_BYTECODE &src = *srcArr[stage];
+      WrappedID3D12Shader *sh = (WrappedID3D12Shader *)src.pShaderBytecode;
+      if(sh)
+        draw.shaders[stage] = sh->GetResourceID();
+    }
+  }
+
   if(m_LastCmdListID != ResourceId())
     m_BakedCmdListInfo[m_LastCmdListID].drawCount++;
   else

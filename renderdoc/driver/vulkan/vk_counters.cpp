@@ -448,3 +448,9 @@ vector<CounterResult> VulkanReplay::FetchCounters(const vector<GPUCounter> &coun
 
   return ret;
 }
+
+BenchmarkResult VulkanReplay::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  BenchmarkResult ret;
+  return ret;
+}

@@ -29,6 +29,7 @@
 #include "core/core.h"
 #include "replay/replay_driver.h"
 #include "d3d11_common.h"
+#include "d3d11_context.h"
 
 class WrappedID3D11Device;
 
@@ -70,6 +71,24 @@ public:
   D3D12Pipe::State GetD3D12PipelineState() { return D3D12Pipe::State(); }
   GLPipe::State GetGLPipelineState() { return GLPipe::State(); }
   VKPipe::State GetVulkanPipelineState() { return VKPipe::State(); }
+  void CaptureDrawCallsPipelineState();
+  vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState()
+  {
+    return m_DrawcallsPipelineState;
+  };
+  vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState()
+  {
+    return vector<DrawcallPipelineState<D3D12Pipe::State>>();
+  };
+  vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState()
+  {
+    return vector<DrawcallPipelineState<GLPipe::State>>();
+  };
+  vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState()
+  {
+    return vector<DrawcallPipelineState<VKPipe::State>>();
+  };
+
   void FreeTargetResource(ResourceId id);
   void FreeCustomShader(ResourceId id);
 
@@ -120,6 +139,8 @@ public:
   vector<GPUCounter> EnumerateCounters();
   void DescribeCounter(GPUCounter counterID, CounterDescription &desc);
   vector<CounterResult> FetchCounters(const vector<GPUCounter> &counters);
+
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
 
   ResourceId CreateProxyTexture(const TextureDescription &templateTex);
   void SetProxyTextureData(ResourceId texid, uint32_t arrayIdx, uint32_t mip, byte *data,
@@ -172,6 +193,8 @@ public:
 private:
   D3D11Pipe::State MakePipelineState();
 
+  void CaptureDrawCallPipelineState(const DrawcallTreeNode &drawnode, uint32_t &eventStart);
+
   bool m_WARP;
   bool m_Proxy;
 
@@ -180,4 +203,5 @@ private:
   WrappedID3D11Device *m_pDevice;
 
   D3D11Pipe::State m_CurPipelineState;
+  vector<DrawcallPipelineState<D3D11Pipe::State>> m_DrawcallsPipelineState;
 };

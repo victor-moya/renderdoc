@@ -45,6 +45,7 @@ public:
   bool AddThumbnail(WindowingSystem system, void *data, ResourceId texID, CompType typeHint);
 
   void Display();
+  void RenderOverlay();
 
   ReplayOutputType GetType() { return m_Type; }
   bool SetPixelContext(WindowingSystem system, void *data);
@@ -144,7 +145,12 @@ public:
 
   rdctype::array<rdctype::str> GetDisassemblyTargets();
   rdctype::str DisassembleShader(const ShaderReflection *refl, const char *target);
-
+  void CaptureDrawCallsPipelineState();
+  rdctype::array<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState();
+  rdctype::array<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState();
+  rdctype::array<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState();
+  rdctype::array<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState();
+  
   rdctype::pair<ResourceId, rdctype::str> BuildCustomShader(const char *entry, const char *source,
                                                             const uint32_t compileFlags,
                                                             ShaderStage type);
@@ -162,6 +168,7 @@ public:
   rdctype::array<CounterResult> FetchCounters(const rdctype::array<GPUCounter> &counters);
   rdctype::array<GPUCounter> EnumerateCounters();
   CounterDescription DescribeCounter(GPUCounter counterID);
+  BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples);
   rdctype::array<TextureDescription> GetTextures();
   rdctype::array<BufferDescription> GetBuffers();
   rdctype::array<rdctype::str> GetResolve(const rdctype::array<uint64_t> &callstack);
@@ -177,6 +184,8 @@ public:
   void FreeTrace(ShaderDebugTrace *trace);
 
   MeshFormat GetPostVSData(uint32_t instID, MeshDataStage stage);
+
+  ShaderReflection *GetShader(ResourceId id, const char *entry);
 
   rdctype::array<EventUsage> GetUsage(ResourceId id);
 
@@ -217,6 +226,11 @@ private:
   D3D12Pipe::State m_D3D12PipelineState;
   GLPipe::State m_GLPipelineState;
   VKPipe::State m_VulkanPipelineState;
+
+  rdctype::array<DrawcallPipelineState<D3D11Pipe::State>> m_DrawCallsD3D11PipelineState;
+  rdctype::array<DrawcallPipelineState<D3D12Pipe::State>> m_DrawCallsD3D12PipelineState;
+  rdctype::array<DrawcallPipelineState<GLPipe::State>>    m_DrawCallsGLPipelineState;
+  rdctype::array<DrawcallPipelineState<VKPipe::State>>    m_DrawCallsVulkanPipelineState;
 
   std::vector<ReplayOutput *> m_Outputs;
 

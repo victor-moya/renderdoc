@@ -464,3 +464,9 @@ vector<CounterResult> D3D12Replay::FetchCounters(const vector<GPUCounter> &count
 
   return ret;
 }
+
+BenchmarkResult D3D12Replay::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  BenchmarkResult ret;
+  return ret;
+}

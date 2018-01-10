@@ -333,3 +333,9 @@ vector<CounterResult> GLReplay::FetchCounters(const vector<GPUCounter> &counters
 
   return ret;
 }
+
+BenchmarkResult GLReplay::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  BenchmarkResult ret;
+  return ret;
+}

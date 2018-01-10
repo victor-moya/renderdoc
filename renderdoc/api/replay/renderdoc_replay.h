@@ -291,6 +291,8 @@ This will also render any thumbnails and the pixel context, if enabled.
 )");
   virtual void Display() = 0;
 
+  virtual void RenderOverlay() = 0;
+
   DOCUMENT(R"(Sets up a zoomed in pixel context view around a particular pixel selection.
 
 The texture rendering uses the configuration specified in :meth:`SetTextureDisplay` except with a
@@ -409,6 +411,7 @@ well as control the replay and analysis functionality available.
   No preference for a particular value, see :meth:`DebugPixel`.
 )");
 struct IReplayController
+
 {
   DOCUMENT(R"(Retrieve a :class:`APIProperties` object describing the current capture.
 
@@ -551,6 +554,13 @@ or hardware-specific ISA formats.
 )");
   virtual rdctype::str DisassembleShader(const ShaderReflection *refl, const char *target) = 0;
 
+  virtual void CaptureDrawCallsPipelineState() = 0;
+  virtual rdctype::array<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState() = 0;
+  virtual rdctype::array<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState() = 0;
+  virtual rdctype::array<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState() = 0;
+  virtual rdctype::array<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState() = 0;
+  virtual ShaderReflection *GetShader(ResourceId id, const char *entry) = 0;
+
   DOCUMENT(R"(Builds a shader suitable for running on the local replay instance as a custom shader.
 
 The language used is native to the local renderer - HLSL for D3D based renderers, GLSL otherwise.
@@ -661,6 +671,8 @@ understanding as well as the type and unit of the resulting information.
 :rtype: CounterDescription
 )");
   virtual CounterDescription DescribeCounter(GPUCounter counterID) = 0;
+
+  virtual BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples) = 0;
 
   DOCUMENT(R"(Retrieve the list of textures alive in the capture.
 

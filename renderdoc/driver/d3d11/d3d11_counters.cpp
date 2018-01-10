@@ -641,3 +641,112 @@ vector<CounterResult> D3D11DebugManager::FetchCounters(const vector<GPUCounter> 
 
   return ret;
 }
+
+
+BenchmarkResult D3D11DebugManager::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  BenchmarkResult ret;
+
+  D3D11_QUERY_DESC disjointdesc = {D3D11_QUERY_TIMESTAMP_DISJOINT, 0};
+  ID3D11Query *disjoint = NULL;
+
+  D3D11_QUERY_DESC qdesc = {D3D11_QUERY_TIMESTAMP, 0};
+  ID3D11Query *start = NULL;
+  ID3D11Query *end = NULL;
+
+  HRESULT hr = S_OK;
+
+  hr = m_pDevice->CreateQuery(&disjointdesc, &disjoint);
+  if(FAILED(hr))
+  {
+    RDCERR("Failed to create disjoint query %08x", hr);
+    return ret;
+  }
+
+  hr = m_pDevice->CreateQuery(&qdesc, &start);
+  if(FAILED(hr))
+  {
+    RDCERR("Failed to create start query %08x", hr);
+    return ret;
+  }
+
+  hr = m_pDevice->CreateQuery(&qdesc, &end);
+  if(FAILED(hr))
+  {
+    RDCERR("Failed to create start query %08x", hr);
+    return ret;
+  }
+
+  DrawcallTreeNode rootdrawnode = m_WrappedContext->GetRootDraw();
+  DrawcallTreeNode lastdrawnode = (rootdrawnode.children.size() == 0) ? rootdrawnode : rootdrawnode.children[rootdrawnode.children.size() - 1];
+  DrawcallDescription &lastDrawcall = (lastdrawnode.children.size() == 0) ? lastdrawnode.draw : lastdrawnode.children[lastdrawnode.children.size() - 1].draw;
+
+  while (lastDrawcall.children.size() > 0)
+    lastDrawcall = lastDrawcall.children[lastDrawcall.children.size() - 1];
+
+  float avgFrameTime = 0;
+  float minFrameTime = -1;
+  float maxFrameTime = -1;
+
+  for (uint32_t s = 0; s < samples; s++)
+  {
+    m_pImmediateContext->Begin(disjoint);
+  
+    m_pImmediateContext->End(start);
+    
+    for (uint32_t f = 0; f < frames_per_sample; f++)
+        m_WrappedDevice->ReplayLog(0, lastDrawcall.eventID, eReplay_Full);
+    
+    m_pImmediateContext->Flush();
+    
+    m_pImmediateContext->End(end);
+    
+    m_pImmediateContext->End(disjoint);
+    
+    D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
+    do
+    {
+      hr = m_pImmediateContext->GetData(disjoint, &disjointData,
+                                        sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT), 0);
+    } while(hr == S_FALSE);
+    RDCASSERTEQUAL(hr, S_OK);
+    
+    RDCASSERT(!disjointData.Disjoint);
+    
+    float ticksToSecs = float(disjointData.Frequency);
+    
+    UINT64 a = 0;
+    hr = m_pImmediateContext->GetData(start, &a, sizeof(UINT64), 0);
+    RDCASSERTEQUAL(hr, S_OK);
+    
+    UINT64 b = 0;
+    hr = m_pImmediateContext->GetData(end, &b, sizeof(UINT64), 0);
+    RDCASSERTEQUAL(hr, S_OK);
+    
+    float duration = (float(b - a) / ticksToSecs);
+
+    avgFrameTime += duration;
+
+    if (minFrameTime == -1)
+      minFrameTime = duration;
+    else
+      if (minFrameTime > duration)
+        minFrameTime = duration;
+
+    if (maxFrameTime == -1)
+      maxFrameTime = duration;
+    else
+      if (maxFrameTime < duration)
+        maxFrameTime = duration;
+  }
+
+  ret.avgFrameTime = avgFrameTime / (frames_per_sample * samples);
+  ret.minFrameTime = minFrameTime / frames_per_sample;
+  ret.maxFrameTime = maxFrameTime / frames_per_sample;
+
+  SAFE_RELEASE(disjoint);
+  SAFE_RELEASE(start);
+  SAFE_RELEASE(end);
+
+  return ret;
+}

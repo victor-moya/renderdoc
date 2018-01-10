@@ -1347,11 +1347,12 @@ void Serialiser::Serialise(const char *name, DrawcallDescription &el)
 
   SerialisePODArray<8>("", el.outputs);
   Serialise("", el.depthOut);
+  SerialisePODArray<6>("", el.shaders);
 
   Serialise("", el.events);
   Serialise("", el.children);
 
-  SIZE_CHECK(248);
+  SIZE_CHECK(296);
 }
 
 template <>
@@ -1601,6 +1602,16 @@ void Serialiser::Serialise(const char *name, CounterDescription &el)
   Serialise("", el.unit);
 
   SIZE_CHECK(56);
+}
+
+template <>
+void Serialiser::Serialise(const char *name, BenchmarkResult &el)
+{
+  Serialise("", el.avgFrameTime);
+  Serialise("", el.minFrameTime);
+  Serialise("", el.maxFrameTime);
+
+  SIZE_CHECK(12);
 }
 
 template <>
@@ -2193,6 +2204,7 @@ bool ReplayProxy::Tick(int type, Serialiser *incomingPacket)
     case eReplayProxy_GetShader: GetShader(ResourceId(), ""); break;
     case eReplayProxy_GetDebugMessages: GetDebugMessages(); break;
     case eReplayProxy_SavePipelineState: SavePipelineState(); break;
+    case eReplayProxy_CaptureDrawCallsPipelineState: CaptureDrawCallsPipelineState(); break;
     case eReplayProxy_GetUsage: GetUsage(ResourceId()); break;
     case eReplayProxy_GetLiveID: GetLiveID(ResourceId()); break;
     case eReplayProxy_GetFrameRecord: GetFrameRecord(); break;
@@ -2214,6 +2226,11 @@ bool ReplayProxy::Tick(int type, Serialiser *incomingPacket)
     {
       CounterDescription desc;
       DescribeCounter(GPUCounter::EventGPUDuration, desc);
+      break;
+    }
+    case eReplayProxy_Benchmark:
+    {
+      Benchmark(0, 0);
       break;
     }
     case eReplayProxy_FillCBufferVariables:
@@ -2446,6 +2463,34 @@ void ReplayProxy::SavePipelineState()
   m_FromReplaySerialiser->Serialise("", m_VulkanPipelineState);
 }
 
+void ReplayProxy::CaptureDrawCallsPipelineState()
+{
+  /*if(m_RemoteServer)
+  {
+    m_Remote->CaptureDrawCallsPipelineState();
+    m_DrawcallsD3D11PipelineState = m_Remote->GetDrawCallsD3D11PipelineState();
+    m_DrawcallsD3D12PipelineState = m_Remote->GetDrawCallsD3D12PipelineState();
+    m_DrawcallsGLPipelineState = m_Remote->GetDrawCallsGLPipelineState();
+    m_DrawcallsVulkanPipelineState = m_Remote->GetDrawCallsVulkanPipelineState();
+  }
+  else
+  {
+    if(!SendReplayCommand(eReplayProxy_CaptureDrawCallsPipelineState))
+      return;
+
+    m_DrawcallsD3D11PipelineState = vector<DrawcallPipelineState<D3D11PipelineState>>();
+    m_DrawcallsD3D12PipelineState = vector<DrawcallPipelineState<D3D12PipelineState>>();
+    m_DrawcallsGLPipelineState = vector<DrawcallPipelineState<GLPipelineState>>();
+    m_DrawcallsVulkanPipelineState = vector<DrawcallPipelineState<VulkanPipelineState>>();
+  }
+
+// TODO : Implement serialize for vector<DrawcallPipelineState<T>>!!
+  m_FromReplaySerialiser->Serialise("", m_DrawcallsD3D11PipelineState);
+  m_FromReplaySerialiser->Serialise("", m_DrawcallsD3D12PipelineState);
+  m_FromReplaySerialiser->Serialise("", m_DrawcallsGLPipelineState);
+  m_FromReplaySerialiser->Serialise("", m_DrawcallsVulkanPipelineState);*/
+}
+
 void ReplayProxy::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
 {
   m_ToReplaySerialiser->Serialise("", endEventID);
@@ -2599,6 +2644,28 @@ vector<CounterResult> ReplayProxy::FetchCounters(const vector<GPUCounter> &count
   else
   {
     if(!SendReplayCommand(eReplayProxy_FetchCounters))
+      return ret;
+  }
+
+  m_FromReplaySerialiser->Serialise("", ret);
+
+  return ret;
+}
+
+BenchmarkResult ReplayProxy::Benchmark(const uint32_t frames_per_sample, const uint32_t samples)
+{
+  BenchmarkResult ret;
+
+  m_ToReplaySerialiser->Serialise("", (uint32_t &) frames_per_sample);
+  m_ToReplaySerialiser->Serialise("", (uint32_t &) samples);
+
+  if(m_RemoteServer)
+  {
+    ret = m_Remote->Benchmark(frames_per_sample, samples);
+  }
+  else
+  {
+    if(!SendReplayCommand(eReplayProxy_Benchmark))
       return ret;
   }
 

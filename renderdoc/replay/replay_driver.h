@@ -105,6 +105,13 @@ public:
 
   virtual FrameRecord GetFrameRecord() = 0;
 
+  virtual void CaptureDrawCallsPipelineState() = 0;
+
+  virtual vector<DrawcallPipelineState<D3D11Pipe::State>> GetDrawCallsD3D11PipelineState() = 0;
+  virtual vector<DrawcallPipelineState<D3D12Pipe::State>> GetDrawCallsD3D12PipelineState() = 0;
+  virtual vector<DrawcallPipelineState<GLPipe::State>> GetDrawCallsGLPipelineState() = 0;
+  virtual vector<DrawcallPipelineState<VKPipe::State>> GetDrawCallsVulkanPipelineState() = 0;
+
   virtual void ReadLogInitialisation() = 0;
   virtual void ReplayLog(uint32_t endEventID, ReplayLogType replayType) = 0;
 
@@ -131,6 +138,7 @@ public:
   virtual vector<GPUCounter> EnumerateCounters() = 0;
   virtual void DescribeCounter(GPUCounter counterID, CounterDescription &desc) = 0;
   virtual vector<CounterResult> FetchCounters(const vector<GPUCounter> &counterID) = 0;
+  virtual BenchmarkResult Benchmark(const uint32_t frames_per_sample, const uint32_t samples) = 0;
 
   virtual void FillCBufferVariables(ResourceId shader, string entryPoint, uint32_t cbufSlot,
                                     vector<ShaderVariable> &outvars, const vector<byte> &data) = 0;

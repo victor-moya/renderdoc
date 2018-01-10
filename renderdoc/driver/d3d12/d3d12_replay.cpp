@@ -79,6 +79,46 @@ void D3D12Replay::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
   m_pDevice->ReplayLog(0, endEventID, replayType);
 }
 
+void D3D12Replay::CaptureDrawCallPipelineState(const rdctype::array<DrawcallDescription> &drawcallList, uint32_t &eventStart)
+{
+  if(drawcallList.empty())
+    return;
+
+  for(size_t i = 0; i < drawcallList.size(); i++)
+  {
+    const DrawcallDescription &d = drawcallList[i];
+
+    CaptureDrawCallPipelineState(d.children, eventStart);
+
+    m_pDevice->ReplayLog(eventStart, d.eventID, eReplay_WithoutDraw);
+
+    if(d.flags & (DrawFlags::Drawcall | DrawFlags::Dispatch | DrawFlags::CmdList | DrawFlags::MultiDraw))
+    {
+      MakePipelineState();
+
+      D3D12Pipe::State pipeState = m_PipelineState;
+
+      DrawcallPipelineState<D3D12Pipe::State> drawCallPipeState;
+      drawCallPipeState.eventID = d.eventID;
+      drawCallPipeState.pipelineState = pipeState;
+      m_DrawcallsPipelineState.push_back(drawCallPipeState);
+    }
+
+    m_pDevice->ReplayLog(eventStart, d.eventID, eReplay_OnlyDraw);
+
+    eventStart = d.eventID + 1;
+  }
+}
+
+void D3D12Replay::CaptureDrawCallsPipelineState()
+{
+  m_DrawcallsPipelineState.clear();
+
+  uint32_t eventStart = 0;
+
+  CaptureDrawCallPipelineState(m_pDevice->GetFrameRecord().drawcallList, eventStart);
+}
+
 vector<ResourceId> D3D12Replay::GetBuffers()
 {
   vector<ResourceId> ret;
