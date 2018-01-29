@@ -368,6 +368,17 @@ float4 RENDERDOC_QOResolvePS(float4 vpos : SV_POSITION) : SV_Target0
 	return ToColour(overdraw);
 }
 
+float4 RENDERDOC_QOResolvePS_RAW(float4 vpos : SV_POSITION) : SV_Target0
+{
+	uint2 quad = vpos.xy*0.5;
+
+	uint overdraw = 0;
+	for (int i = 0; i < 4; i++)
+		overdraw += overdrawSRV[uint3(quad, i)] / (i + 1);
+
+	return float4(overdraw / 255.0f, overdraw, 0.0f, 1.0f);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Above shaders courtesy of Stephen Hill (@self_shadow)
 //

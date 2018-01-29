@@ -574,6 +574,7 @@
             this.overlay.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.overlay.Items.AddRange(new object[] {
             "None",
+			"Highlight Clear Drawcall",
             "Highlight Drawcall",
             "Wireframe Mesh",
             "Depth Test",
@@ -586,6 +587,7 @@
             "Clear Before Draw",
             "Quad Overdraw (Pass)",
             "Quad Overdraw (Draw)",
+			"Quad Overdraw Count(Draw)",
             "Triangle Size (Pass)",
             "Triangle Size (Draw)"});
             this.overlay.Name = "overlay";

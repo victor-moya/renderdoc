@@ -702,7 +702,10 @@ bool D3D11DebugManager::InitDebugRendering()
 
     m_DebugRender.QuadOverdrawPS =
         MakePShader(displayhlsl.c_str(), "RENDERDOC_QuadOverdrawPS", "ps_5_0");
-    m_DebugRender.QOResolvePS = MakePShader(displayhlsl.c_str(), "RENDERDOC_QOResolvePS", "ps_5_0");
+
+    m_DebugRender.QOResolvePS_RAW = MakePShader(displayhlsl.c_str(), "RENDERDOC_QOResolvePS_RAW", "ps_5_0");
+
+	m_DebugRender.QOResolvePS = MakePShader(displayhlsl.c_str(), "RENDERDOC_QOResolvePS", "ps_5_0");
 
     m_DebugRender.PixelHistoryUnusedCS =
         MakeCShader(displayhlsl.c_str(), "RENDERDOC_PixelHistoryUnused", "cs_5_0");

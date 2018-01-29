@@ -167,6 +167,7 @@ namespace renderdoc
     public enum TextureDisplayOverlay
     {
         None = 0,
+		ClearDrawcall,
         Drawcall,
         Wireframe,
         Depth,
@@ -179,6 +180,7 @@ namespace renderdoc
         ClearBeforeDraw,
         QuadOverdrawPass,
         QuadOverdrawDraw,
+		QuadOverdrawDrawcallCount,
         TriangleSizePass,
         TriangleSizeDraw,
     };

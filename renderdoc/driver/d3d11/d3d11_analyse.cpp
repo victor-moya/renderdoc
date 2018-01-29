@@ -3632,8 +3632,21 @@ ResourceId D3D11DebugManager::RenderOverlay(ResourceId texid, CompType typeHint,
   {
     // just need the basic texture
   }
-  else if(overlay == DebugOverlay::Drawcall)
+  else if(overlay == DebugOverlay::Drawcall || overlay == DebugOverlay::ClearDrawcall)
   {
+    D3D11RenderState *state = m_WrappedContext->GetCurrentPipelineState();
+
+	if (overlay == DebugOverlay::ClearDrawcall)
+	{
+
+		vector<uint32_t> events = passEvents;
+		events.clear();
+
+		for (size_t i = 0; i < ARRAY_COUNT(state->OM.RenderTargets); i++)
+			if (state->OM.RenderTargets[i])
+				m_WrappedContext->ClearRenderTargetView(state->OM.RenderTargets[i], black);
+	}
+
     m_pImmediateContext->PSSetShader(m_DebugRender.OverlayPS, NULL, 0);
 
     dsDesc.DepthEnable = FALSE;
@@ -4394,6 +4407,219 @@ ResourceId D3D11DebugManager::RenderOverlay(ResourceId texid, CompType typeHint,
       if(overlay == DebugOverlay::QuadOverdrawPass)
         m_WrappedDevice->ReplayLog(0, eventID, eReplay_WithoutDraw);
     }
+  }
+  else if (overlay == DebugOverlay::QuadOverdrawDrawcallCount)
+  {
+	SCOPED_TIMER("Quad Overdraw");
+	
+	D3D11RenderState *state = m_WrappedContext->GetCurrentPipelineState();
+	// Added---------
+	for (size_t i = 0; i < ARRAY_COUNT(state->OM.RenderTargets); i++)
+		if (state->OM.RenderTargets[i])
+			m_WrappedContext->ClearRenderTargetView(state->OM.RenderTargets[i], black);
+	//----------------	
+
+	vector<uint32_t> events = passEvents;
+
+	events.clear();
+
+	events.push_back(eventID);
+
+	if (!events.empty())
+	{
+
+		uint32_t width = 1920 >> 1;
+		uint32_t height = 1080 >> 1;
+
+		uint32_t depthWidth = 1920;
+		uint32_t depthHeight = 1080;
+		bool forceDepth = false;
+
+		{
+			ID3D11Resource *res = NULL;
+			if (state->OM.RenderTargets[0])
+			{
+				state->OM.RenderTargets[0]->GetResource(&res);
+			}
+			else if (state->OM.DepthView)
+			{
+				state->OM.DepthView->GetResource(&res);
+			}
+			else
+			{
+				RDCERR("Couldn't get size of existing targets");
+				return m_OverlayResourceId;
+			}
+
+			D3D11_RESOURCE_DIMENSION dim;
+			res->GetType(&dim);
+
+			if (dim == D3D11_RESOURCE_DIMENSION_TEXTURE1D)
+			{
+				D3D11_TEXTURE1D_DESC texdesc;
+				((ID3D11Texture1D *)res)->GetDesc(&texdesc);
+
+				width = RDCMAX(1U, texdesc.Width >> 1);
+				height = 1;
+			}
+			else if (dim == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+			{
+				D3D11_TEXTURE2D_DESC texdesc;
+				((ID3D11Texture2D *)res)->GetDesc(&texdesc);
+
+				width = RDCMAX(1U, texdesc.Width >> 1);
+				height = RDCMAX(1U, texdesc.Height >> 1);
+
+				if (texdesc.SampleDesc.Count > 1)
+				{
+					forceDepth = true;
+					depthWidth = texdesc.Width;
+					depthHeight = texdesc.Height;
+				}
+			}
+			else
+			{
+				RDCERR("Trying to show quad overdraw on invalid view");
+				return m_OverlayResourceId;
+			}
+
+			SAFE_RELEASE(res);
+		}
+
+		ID3D11DepthStencilView *depthOverride = NULL;
+
+		if (forceDepth)
+		{
+			D3D11_TEXTURE2D_DESC texDesc = {
+				depthWidth,
+				depthHeight,
+				1U,
+				1U,
+				DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+				{ 1, 0 },
+				D3D11_USAGE_DEFAULT,
+				D3D11_BIND_DEPTH_STENCIL,
+				0,
+				0,
+			};
+
+			ID3D11Texture2D *tex = NULL;
+			m_pDevice->CreateTexture2D(&texDesc, NULL, &tex);
+			m_pDevice->CreateDepthStencilView(tex, NULL, &depthOverride);
+			SAFE_RELEASE(tex);
+		}
+
+		D3D11_TEXTURE2D_DESC uavTexDesc = {
+			width,
+			height,
+			1U,
+			4U,
+			DXGI_FORMAT_R32_UINT,
+			{ 1, 0 },
+			D3D11_USAGE_DEFAULT,
+			D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE,
+			0,
+			0,
+		};
+
+		ID3D11Texture2D *overdrawTex = NULL;
+		ID3D11ShaderResourceView *overdrawSRV = NULL;
+		ID3D11UnorderedAccessView *overdrawUAV = NULL;
+
+		m_pDevice->CreateTexture2D(&uavTexDesc, NULL, &overdrawTex);
+		m_pDevice->CreateShaderResourceView(overdrawTex, NULL, &overdrawSRV);
+		m_pDevice->CreateUnorderedAccessView(overdrawTex, NULL, &overdrawUAV);
+
+		UINT val = 0;
+		m_pImmediateContext->ClearUnorderedAccessViewUint(overdrawUAV, &val);
+
+		for (size_t i = 0; i < events.size(); i++)
+		{
+			D3D11RenderState oldstate = *m_WrappedContext->GetCurrentPipelineState();
+
+			D3D11_DEPTH_STENCIL_DESC dsdesc = {
+				/*DepthEnable =*/TRUE,
+				/*DepthWriteMask =*/D3D11_DEPTH_WRITE_MASK_ALL,
+				/*DepthFunc =*/D3D11_COMPARISON_LESS,
+				/*StencilEnable =*/FALSE,
+				/*StencilReadMask =*/D3D11_DEFAULT_STENCIL_READ_MASK,
+				/*StencilWriteMask =*/D3D11_DEFAULT_STENCIL_WRITE_MASK,
+				/*FrontFace =*/{ D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+				D3D11_COMPARISON_ALWAYS },
+				/*BackFace =*/{ D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP,
+				D3D11_COMPARISON_ALWAYS },
+			};
+			ID3D11DepthStencilState *ds = NULL;
+
+			if (state->OM.DepthStencilState)
+				state->OM.DepthStencilState->GetDesc(&dsdesc);
+
+			dsdesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+			dsdesc.StencilWriteMask = 0;
+
+			m_pDevice->CreateDepthStencilState(&dsdesc, &ds);
+
+			m_pImmediateContext->OMSetDepthStencilState(ds, oldstate.OM.StencRef);
+
+			SAFE_RELEASE(ds);
+
+			UINT UAVcount = 0;
+			m_pImmediateContext->OMSetRenderTargetsAndUnorderedAccessViews(
+				0, NULL, depthOverride ? depthOverride : oldstate.OM.DepthView, 0, 1, &overdrawUAV,
+				&UAVcount);
+
+			m_pImmediateContext->PSSetShader(m_DebugRender.QuadOverdrawPS, NULL, 0);
+
+			m_WrappedDevice->ReplayLog(events[i], events[i], eReplay_OnlyDraw);
+
+			oldstate.ApplyState(m_WrappedContext);
+
+			if (overlay == DebugOverlay::QuadOverdrawPass)
+			{
+				m_WrappedDevice->ReplayLog(events[i], events[i], eReplay_OnlyDraw);
+
+				if (i + 1 < events.size())
+					m_WrappedDevice->ReplayLog(events[i], events[i + 1], eReplay_WithoutDraw);
+			}
+		}
+
+		SAFE_RELEASE(depthOverride);
+
+		// resolve pass
+		{
+			m_pImmediateContext->VSSetShader(m_DebugRender.FullscreenVS, NULL, 0);
+			m_pImmediateContext->HSSetShader(NULL, NULL, 0);
+			m_pImmediateContext->DSSetShader(NULL, NULL, 0);
+			m_pImmediateContext->GSSetShader(NULL, NULL, 0);
+			m_pImmediateContext->PSSetShader(m_DebugRender.QOResolvePS_RAW, NULL, 0);
+			m_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			m_pImmediateContext->IASetInputLayout(NULL);
+
+			ID3D11Buffer *buf = MakeCBuffer(&overdrawRamp[0].x, sizeof(overdrawRamp));
+
+			m_pImmediateContext->PSSetConstantBuffers(0, 1, &buf);
+
+			m_pImmediateContext->OMSetRenderTargets(1, &rtv, NULL);
+
+			m_pImmediateContext->OMSetDepthStencilState(m_DebugRender.NoDepthState, 0);
+			m_pImmediateContext->OMSetBlendState(NULL, NULL, 0xffffffff);
+			m_pImmediateContext->RSSetState(m_DebugRender.RastState);
+
+			float clearColour[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			m_pImmediateContext->ClearRenderTargetView(rtv, clearColour);
+
+			m_pImmediateContext->PSSetShaderResources(0, 1, &overdrawSRV);
+
+			m_pImmediateContext->Draw(3, 0);
+		}
+
+		SAFE_RELEASE(overdrawTex);
+		SAFE_RELEASE(overdrawSRV);
+		SAFE_RELEASE(overdrawUAV);
+
+		if (overlay == DebugOverlay::QuadOverdrawPass)
+			m_WrappedDevice->ReplayLog(0, eventID, eReplay_WithoutDraw);
+	}
   }
   else if(preDrawDepth)
   {

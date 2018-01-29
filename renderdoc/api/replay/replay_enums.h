@@ -889,6 +889,7 @@ See :ref:`the documentation for this feature <render-overlay>`.
 enum class DebugOverlay : uint32_t
 {
   NoOverlay = 0,
+  ClearDrawcall,
   Drawcall,
   Wireframe,
   Depth,
@@ -901,6 +902,7 @@ enum class DebugOverlay : uint32_t
   ClearBeforeDraw,
   QuadOverdrawPass,
   QuadOverdrawDraw,
+  QuadOverdrawDrawcallCount,
   TriangleSizePass,
   TriangleSizeDraw,
 };

@@ -549,7 +549,7 @@ private:
     ID3D11Buffer *PickResultBuf;
     ID3D11UnorderedAccessView *PickResultUAV;
 
-    ID3D11PixelShader *QuadOverdrawPS, *QOResolvePS;
+    ID3D11PixelShader *QuadOverdrawPS, *QOResolvePS, *QOResolvePS_RAW;
 
     ID3D11Buffer *tileResultBuff, *resultBuff, *resultStageBuff;
     ID3D11UnorderedAccessView *tileResultUAV[3], *resultUAV[3];
